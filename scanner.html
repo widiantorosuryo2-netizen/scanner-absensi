@@ -1,48 +1,451 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Cilupi - Scanner QR</title>
-<script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#0f172a;color:#f8fafc;font-family:Arial,sans-serif;min-height:100vh;display:flex;justify-content:center}.wrap{width:100%;max-width:480px;padding:18px}.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.title{font-size:20px;font-weight:700}.close{border:0;background:#334155;color:#fff;border-radius:10px;padding:9px 13px}.card{background:#1e293b;border:1px solid #334155;border-radius:18px;padding:14px}.reader{width:100%;min-height:320px;background:#020617;border-radius:14px;overflow:hidden}.status{text-align:center;color:#94a3b8;font-size:13px;line-height:1.5;margin:14px 4px}.btn{width:100%;border:0;border-radius:12px;padding:13px;font-weight:700;background:#3b82f6;color:#fff}.btn:disabled{opacity:.5}.hint{font-size:11px;color:#94a3b8;text-align:center;margin-top:10px}.error{color:#fca5a5}.ok{color:#86efac}</style>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <title>Scanner Absensi</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: white;
+      text-align: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 600px;
+      margin: auto;
+      padding: 15px;
+    }
+
+    h2 {
+      margin: 10px 0 15px;
+    }
+
+    #reader {
+      width: 100%;
+      max-width: 500px;
+      margin: auto;
+      background: #000;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    button {
+      border: none;
+      border-radius: 8px;
+      padding: 13px 20px;
+      margin: 8px 4px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    #startBtn {
+      background: #2196f3;
+      color: white;
+    }
+
+    #stopBtn {
+      background: #f44336;
+      color: white;
+    }
+
+    #status {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #222;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    #result {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      background: #333;
+      word-break: break-word;
+      display: none;
+    }
+
+    .warning {
+      color: #ffcc00;
+    }
+
+    .error {
+      color: #ff5252;
+    }
+
+    .success {
+      color: #4caf50;
+    }
+  </style>
 </head>
+
 <body>
-<div class="wrap">
-  <div class="top"><div class="title">Scan QR Absensi</div><button class="close" onclick="closeWindow()">Tutup</button></div>
-  <div class="card">
-    <div id="reader" class="reader"></div>
-    <div id="status" class="status">Meminta izin kamera...</div>
-    <button id="retry" class="btn" style="display:none" onclick="startScanner()">Coba Lagi</button>
-    <div class="hint">Gunakan kamera belakang dan arahkan QR Code ke kotak scanner.</div>
+
+<div class="container">
+
+  <h2>📷 Scanner Absensi</h2>
+
+  <div id="reader"></div>
+
+  <div>
+    <button id="startBtn" onclick="startScanner()">
+      ▶ Mulai Kamera
+    </button>
+
+    <button id="stopBtn" onclick="stopScanner()">
+      ⏹ Matikan Kamera
+    </button>
   </div>
+
+  <div id="status">
+    Tekan <b>Mulai Kamera</b> untuk memulai scanner.
+  </div>
+
+  <div id="result"></div>
+
 </div>
+
+<!-- Library QR Scanner -->
+<script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
 <script>
-var scanner=null,busy=false;
-function setStatus(t,cls){var e=document.getElementById('status');e.className='status '+(cls||'');e.innerHTML=t;}
-function closeWindow(){try{if(scanner)scanner.stop().catch(function(){});}catch(e){}window.close();}
-function capturePhoto(){try{var v=document.querySelector('#reader video');if(!v||!v.videoWidth)return '';var c=document.createElement('canvas');c.width=v.videoWidth;c.height=v.videoHeight;c.getContext('2d').drawImage(v,0,0);return c.toDataURL('image/jpeg',0.5);}catch(e){return '';}}
-function sendResult(text){if(busy)return;busy=true;setStatus('QR terbaca. Mengirim data...','ok');var foto=capturePhoto();var payload={type:'CILUPI_QR_RESULT',text:String(text||''),foto:foto};try{if(window.opener&&!window.opener.closed){window.opener.postMessage(payload,'*');setTimeout(function(){try{scanner.stop().catch(function(){});}catch(e){}window.close();},500);}else{setStatus('Halaman utama sudah tidak terbuka. Tutup scanner lalu buka kembali aplikasi.','error');}}catch(e){setStatus('Gagal mengirim hasil scan: '+e.message,'error');}}
-function startScanner(){
-  busy=false;document.getElementById('retry').style.display='none';
-  setStatus('Meminta izin kamera...');
-  if(!window.isSecureContext){setStatus('Kamera membutuhkan HTTPS. Buka scanner melalui URL HTTPS.','error');document.getElementById('retry').style.display='block';return;}
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){setStatus('Browser tidak mendukung akses kamera. Gunakan Chrome atau Edge terbaru.','error');document.getElementById('retry').style.display='block';return;}
-  if(scanner){try{scanner.clear();}catch(e){}}
-  scanner=new Html5Qrcode('reader');
-  scanner.start({facingMode:{ideal:'environment'}},{fps:10,qrbox:function(w,h){var q=Math.floor(Math.min(w,h)*0.65);return {width:Math.max(180,Math.min(300,q)),height:Math.max(180,Math.min(300,q))};}},function(decodedText){sendResult(decodedText);},function(){})
-  .then(function(){setStatus('Kamera aktif. Arahkan QR Code ke kotak scanner.');})
-  .catch(function(err){
-    var n=err&&err.name?err.name:'';var msg='Kamera tidak dapat diakses.';
-    if(n==='NotAllowedError'||n==='PermissionDeniedError')msg='IZIN KAMERA DITOLAK. Izinkan kamera untuk halaman scanner ini, lalu tekan Coba Lagi.';
-    else if(n==='NotFoundError'||n==='DevicesNotFoundError')msg='Kamera tidak ditemukan pada perangkat.';
-    else if(n==='NotReadableError'||n==='TrackStartError')msg='Kamera sedang digunakan aplikasi lain. Tutup aplikasi kamera lain lalu coba lagi.';
-    else if(n==='SecurityError')msg='Browser memblokir kamera. Pastikan URL scanner menggunakan HTTPS.';
-    setStatus(msg+'<br><small>'+String(err)+'</small>','error');document.getElementById('retry').style.display='block';
+  let scanner = null;
+  let scanning = false;
+
+  const statusBox = document.getElementById("status");
+  const resultBox = document.getElementById("result");
+
+  function setStatus(message, type = "") {
+    statusBox.className = type;
+    statusBox.innerHTML = message;
+  }
+
+  function showResult(message) {
+    resultBox.style.display = "block";
+    resultBox.innerHTML = message;
+  }
+
+  async function startScanner() {
+
+    if (scanning) {
+      setStatus("Scanner sudah berjalan.", "warning");
+      return;
+    }
+
+    // Cek HTTPS
+    if (!window.isSecureContext) {
+      setStatus(
+        "❌ Kamera membutuhkan koneksi HTTPS.<br>" +
+        "Pastikan Anda membuka scanner melalui URL GitHub Pages.",
+        "error"
+      );
+      return;
+    }
+
+    // Cek dukungan kamera
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setStatus(
+        "❌ Browser tidak mendukung akses kamera.",
+        "error"
+      );
+      return;
+    }
+
+    setStatus(
+      "⏳ Meminta izin kamera...",
+      "warning"
+    );
+
+    try {
+
+      // Meminta izin kamera terlebih dahulu
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: {
+            ideal: "environment"
+          }
+        },
+        audio: false
+      });
+
+      // Matikan stream sementara.
+      // html5-qrcode akan membuka kamera kembali.
+      stream.getTracks().forEach(track => track.stop());
+
+    } catch (error) {
+
+      console.error("Camera permission error:", error);
+
+      if (error.name === "NotAllowedError") {
+
+        setStatus(
+          "❌ IZIN KAMERA DITOLAK.<br><br>" +
+          "Silakan tekan ikon 🔒 di sebelah alamat website " +
+          "→ Kamera → Izinkan.<br><br>" +
+          "Setelah itu refresh halaman.",
+          "error"
+        );
+
+        return;
+      }
+
+      if (error.name === "NotFoundError") {
+
+        setStatus(
+          "❌ Kamera tidak ditemukan pada perangkat.",
+          "error"
+        );
+
+        return;
+      }
+
+      if (error.name === "NotReadableError") {
+
+        setStatus(
+          "❌ Kamera sedang digunakan aplikasi lain.<br>" +
+          "Tutup aplikasi yang menggunakan kamera lalu coba lagi.",
+          "error"
+        );
+
+        return;
+      }
+
+      setStatus(
+        "❌ Kamera tidak dapat diakses.<br>" +
+        "Error: " + error.name,
+        "error"
+      );
+
+      return;
+    }
+
+    scanner = new Html5Qrcode("reader");
+
+    const config = {
+      fps: 10,
+      qrbox: function(viewfinderWidth, viewfinderHeight) {
+
+        const minEdge = Math.min(
+          viewfinderWidth,
+          viewfinderHeight
+        );
+
+        const size = Math.floor(minEdge * 0.70);
+
+        return {
+          width: size,
+          height: size
+        };
+      },
+
+      aspectRatio: 1.0
+    };
+
+    setStatus(
+      "📷 Kamera aktif.<br>" +
+      "Arahkan QR Code ke kotak scanner.",
+      "success"
+    );
+
+    try {
+
+      await scanner.start(
+
+        {
+          facingMode: "environment"
+        },
+
+        config,
+
+        onScanSuccess,
+
+        onScanFailure
+
+      );
+
+      scanning = true;
+
+    } catch (error) {
+
+      console.error("Scanner start error:", error);
+
+      setStatus(
+        "❌ Scanner tidak dapat dimulai.<br><br>" +
+        "Error: " + error,
+        "error"
+      );
+
+      scanning = false;
+    }
+  }
+
+
+  function onScanSuccess(decodedText, decodedResult) {
+
+    if (!decodedText) {
+      return;
+    }
+
+    console.log("QR terbaca:", decodedText);
+
+    showResult(
+      "<b>✅ QR BERHASIL DIBACA</b><br><br>" +
+      escapeHtml(decodedText)
+    );
+
+    setStatus(
+      "✅ QR Code berhasil dibaca.",
+      "success"
+    );
+
+    // Hentikan kamera
+    stopScanner();
+
+    /*
+     * Mengirim hasil kembali ke halaman sebelumnya.
+     *
+     * Jika scanner dibuka oleh Apps Script menggunakan:
+     *
+     * scanner.html?callback=...
+     *
+     * maka data QR dapat diteruskan melalui postMessage.
+     */
+
+    try {
+
+      if (window.opener) {
+
+        window.opener.postMessage(
+          {
+            type: "QR_SCANNED",
+            value: decodedText
+          },
+          "*"
+        );
+
+      }
+
+    } catch (error) {
+
+      console.log(
+        "Tidak dapat mengirim data ke window.opener:",
+        error
+      );
+
+    }
+
+    // Jika halaman scanner dibuka dari Apps Script
+    // melalui parameter callback, kirim juga melalui URL.
+    sendResultToParent(decodedText);
+  }
+
+
+  function sendResultToParent(value) {
+
+    try {
+
+      const params = new URLSearchParams(
+        window.location.search
+      );
+
+      const callback = params.get("callback");
+
+      if (callback) {
+
+        window.location.href =
+          callback +
+          "?qr=" +
+          encodeURIComponent(value);
+
+      }
+
+    } catch (error) {
+
+      console.log(
+        "Callback tidak digunakan:",
+        error
+      );
+
+    }
+  }
+
+
+  function onScanFailure(errorMessage) {
+
+    // Jangan tampilkan error setiap frame.
+    // Scanner memang akan sering gagal membaca frame
+    // sebelum menemukan QR.
+  }
+
+
+  async function stopScanner() {
+
+    if (!scanner || !scanning) {
+      return;
+    }
+
+    try {
+
+      await scanner.stop();
+
+      await scanner.clear();
+
+    } catch (error) {
+
+      console.log(
+        "Stop scanner:",
+        error
+      );
+
+    }
+
+    scanner = null;
+    scanning = false;
+
+    setStatus(
+      "Kamera dimatikan.<br>" +
+      "Tekan <b>Mulai Kamera</b> untuk memindai lagi."
+    );
+  }
+
+
+  function escapeHtml(text) {
+
+    const div = document.createElement("div");
+
+    div.textContent = text;
+
+    return div.innerHTML;
+  }
+
+
+  // Membersihkan kamera ketika halaman ditutup
+  window.addEventListener("beforeunload", function() {
+
+    if (scanner && scanning) {
+
+      try {
+        scanner.stop();
+      } catch (e) {}
+
+    }
+
   });
-}
-window.addEventListener('load',startScanner);
+
 </script>
+
 </body>
 </html>
